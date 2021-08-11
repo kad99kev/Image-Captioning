@@ -127,3 +127,9 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Ignore dataset
+dataset/
+
+# Ignore vscode
+.vscode/
