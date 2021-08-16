@@ -28,8 +28,9 @@ class RNNDecoder(nn.Module):
         self, encoder_dim, decoder_dim, attention_dim, embedding_dim, vocab_size
     ) -> None:
         super().__init__()
+        self.decoder_dim = decoder_dim
         self.embedding = nn.Embedding(vocab_size, embedding_dim)
-        self.gru = nn.GRUCell(encoder_dim + embedding_dim, decoder_dim)
+        self.gru = nn.GRU(encoder_dim + embedding_dim, decoder_dim, batch_first=True)
         self.fc_1 = nn.Linear(decoder_dim, decoder_dim)
         self.fc_2 = nn.Linear(decoder_dim, vocab_size)
 
@@ -37,22 +38,38 @@ class RNNDecoder(nn.Module):
 
         self.softmax = nn.Softmax(dim=1)
 
-    def forward(self, decoder_input, features, hidden) -> torch.Tensor:
+    def forward(
+        self, decoder_input, encoder_output, hidden
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
 
         # Get outputs from attention model
-        # context_vector: (1, embedding_dim)
+        # context_vector: (1, encoder_dim)
         # attn_weights: (1, 64, 1)
-        context_vector, attention_weights = self.attn(features, hidden)
+        context_vector, attention_weights = self.attn(encoder_output, hidden)
 
-        # x: (1, 1, embedding_dim)
+        # x: (batch_size, 1, embedding_dim)
         x = self.embedding(decoder_input)
 
-        # x: (1, 1, encoder_dim + embedding_dim)
+        # x: (batch_size, 1, encoder_dim + embedding_dim)
         x = torch.cat([context_vector.unsqueeze(1), x], dim=-1)
-        print(x.shape)
 
+        # output: (batch_size, 1, decoder_dim)
+        # state: (batch_size, 1, decoder_dim)
         output, state = self.gru(x)
-        return output, state
+
+        # x: (1, 1, decoder_dim)
+        x = self.fc_1(output)
+
+        # x: (batch_size * seq_length, decoder_dim)
+        x = x.view(-1, x.size(2))
+
+        # x: (batch_size * seq_length, vocab_size)
+        x = self.fc_2(x)
+
+        return x, state.view(-1, self.decoder_dim), attention_weights
+
+    def init_hidden(self, batch_size):
+        return torch.zeros(batch_size, self.decoder_dim)
 
 
 class Attention(nn.Module):
