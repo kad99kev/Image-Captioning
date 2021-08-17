@@ -69,6 +69,9 @@ class FeatureCaptionDataset(torch.utils.data.Dataset):
         feature = np.load(feature_path + ".npy")
 
         tokenized = self.tokenizer(caption)
+        # Adding start and eos tokens to the start and end of sentences respectively.
+        tokenized.insert(0, "<start>")
+        tokenized.append("<eos>")
         idx_captions = self.vocab(tokenized)
 
         return feature, idx_captions
