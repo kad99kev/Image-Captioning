@@ -2,6 +2,8 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
+from tqdm.auto import tqdm
+
 
 def custom_loss(real, pred, loss_fn):
     mask = torch.logical_not(torch.eq(real, torch.zeros_like(real)))
@@ -47,10 +49,13 @@ def train(dataloader, encoder, decoder, vocab):
     ce_loss = nn.CrossEntropyLoss(reduction="none")
     losses = []
 
+    pbar = tqdm()
+
     for epoch in range(1, 2):
         print("*" * 10 + f" Epoch {epoch}/{2} " + "*" * 10)
         total_loss = 0
 
+        pbar.reset(total=len(dataloader))
         for i, (img_feats, caps) in enumerate(dataloader):
             batch_loss, t_loss = train_step(
                 encoder, decoder, optimizer, ce_loss, vocab, img_feats, caps
@@ -58,9 +63,12 @@ def train(dataloader, encoder, decoder, vocab):
             total_loss += t_loss
 
             if i % 100 == 0:
-                average_batch_loss = batch_loss.numpy() / caps.size(1)
+                average_batch_loss = batch_loss / caps.size(1)
                 print(f"Average Batch {i} Loss: {average_batch_loss}")
 
-        losses.plot(total_loss / len(dataloader))
+            pbar.update()
+
+        losses.append(total_loss / len(dataloader))
 
     print(f"Total Loss: {(total_loss / len(dataloader)):.6f}")
+    pbar.refresh()
