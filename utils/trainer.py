@@ -5,7 +5,7 @@ import torch.optim as optim
 
 from tqdm.auto import tqdm
 
-def custom_loss(real, pred, loss_fn):
+def _custom_loss(real, pred, loss_fn):
     mask = torch.logical_not(torch.eq(real, torch.zeros_like(real)))
     loss_ = loss_fn(pred, real)
 
@@ -40,7 +40,7 @@ class Trainer:
         for i in range(1, seq_len):
             preds, hidden, _ = self.decoder(dec_input, enc_feats, hidden)
 
-            loss += custom_loss(captions[:, i], preds, self.loss_fn)
+            loss += _custom_loss(captions[:, i], preds, self.loss_fn)
 
             dec_input = torch.unsqueeze(captions[:, i], 1)
 
