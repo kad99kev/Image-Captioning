@@ -133,3 +133,6 @@ dataset/
 
 # Ignore vscode
 .vscode/
+
+# Ignore models
+models/

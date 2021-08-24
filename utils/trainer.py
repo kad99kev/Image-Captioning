@@ -1,9 +1,7 @@
-from json import encoder
 import torch
-import torch.nn as nn
-import torch.optim as optim
 
 from tqdm.auto import tqdm
+
 
 def _custom_loss(real, pred, loss_fn):
     mask = torch.logical_not(torch.eq(real, torch.zeros_like(real)))
@@ -14,11 +12,14 @@ def _custom_loss(real, pred, loss_fn):
 
     return torch.mean(loss_)
 
+
 class Trainer:
-    def __init__(self, encoder, decoder, optimizer, loss_fn, vocab, device=torch.device("cpu")) -> None:
-        self.encoder = encoder
-        self.decoder = decoder
-        self.optimizer= optimizer
+    def __init__(
+        self, encoder, decoder, optimizer, loss_fn, vocab, device=torch.device("cpu")
+    ) -> None:
+        self.encoder = encoder.to(device)
+        self.decoder = decoder.to(device)
+        self.optimizer = optimizer
         self.loss_fn = loss_fn
         self.vocab = vocab
 
@@ -31,9 +32,11 @@ class Trainer:
         loss = 0
         batch_size, seq_len = captions.size()
 
-        hidden = self.decoder.init_hidden(batch_size)
+        hidden = self.decoder.init_hidden(batch_size).to(self.device)
 
-        dec_input = torch.unsqueeze(torch.tensor(self.vocab(["<start>"]) * batch_size), 1).to(self.device)
+        dec_input = torch.unsqueeze(
+            torch.tensor(self.vocab(["<start>"]) * batch_size), 1
+        ).to(self.device)
 
         enc_feats = self.encoder(img_feats)
 
@@ -49,7 +52,7 @@ class Trainer:
         self.optimizer.step()
 
         total_loss = loss / seq_len
-        
+
         return loss, total_loss
 
     def train(self, dataloader, epochs):
@@ -66,9 +69,7 @@ class Trainer:
                 img_feats = img_feats.to(self.device)
                 captions = captions.to(self.device)
 
-                batch_loss, t_loss = self.train_step(
-                    img_feats, captions
-                )
+                batch_loss, t_loss = self.train_step(img_feats, captions)
                 total_loss += t_loss
 
                 if i % 100 == 0:
@@ -76,8 +77,8 @@ class Trainer:
                     print(f"Average Batch {i} Loss: {average_batch_loss}")
 
                 pbar.update()
-            
+
             losses.append(total_loss / len(dataloader))
-        
+
         print(f"Total Loss: {(total_loss / len(dataloader)):.6f}")
         pbar.refresh()
