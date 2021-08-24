@@ -44,7 +44,11 @@ def train_step(encoder, decoder, optimizer, loss_fn, vocab, img_feats, captions)
     return loss, total_loss
 
 
-def train(dataloader, encoder, decoder, vocab):
+def train(dataloader, encoder, decoder, vocab, device=torch.device("cpu")):
+
+    encoder = encoder.to(device)
+    decoder = decoder.to(device)
+
     optimizer = optim.Adam(list(encoder.parameters()) + list(decoder.parameters()))
     ce_loss = nn.CrossEntropyLoss(reduction="none")
     losses = []
@@ -57,6 +61,9 @@ def train(dataloader, encoder, decoder, vocab):
 
         pbar.reset(total=len(dataloader))
         for i, (img_feats, caps) in enumerate(dataloader):
+            img_feats = img_feats.to(device)
+            caps = caps.to(device)
+
             batch_loss, t_loss = train_step(
                 encoder, decoder, optimizer, ce_loss, vocab, img_feats, caps
             )
