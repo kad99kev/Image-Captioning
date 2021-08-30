@@ -136,3 +136,6 @@ dataset/
 
 # Ignore models
 models/
+
+# Ignore wandb
+wandb/

@@ -1,4 +1,10 @@
+import numpy as np
+import wandb
+
 import torch
+from torch.distributions.categorical import Categorical
+
+from .helpers import plot_attention
 
 from tqdm.auto import tqdm
 
@@ -15,15 +21,86 @@ def _custom_loss(real, pred, loss_fn):
 
 class Trainer:
     def __init__(
-        self, encoder, decoder, optimizer, loss_fn, vocab, device=torch.device("cpu")
+        self,
+        encoder,
+        decoder,
+        optimizer,
+        loss_fn,
+        vocab,
+        max_len,
+        embed_dim,
+        device=torch.device("cpu"),
+        proj_wandb=None,
+        sample_image=None,
+        sample_features=None,
     ) -> None:
         self.encoder = encoder.to(device)
         self.decoder = decoder.to(device)
+
         self.optimizer = optimizer
         self.loss_fn = loss_fn
+
         self.vocab = vocab
+        self.max_len = max_len
+        self.embed_dim = embed_dim
+
+        if proj_wandb:
+            assert (
+                sample_image is not None
+            ), "You must provide a sample image for evaluation while logging with Weights and Biases!"
+            self.sample_image = sample_image
+
+            assert (
+                sample_features is not None
+            ), "You must provide a sample features for evaluation while logging with Weights and Biases!"
+            sample_features = torch.from_numpy(sample_features)
+            self.sample_features = torch.unsqueeze(sample_features, 0).to(device)
+
+            self.wandb = wandb.init(project=proj_wandb)
 
         self.device = device
+
+    def eval_step(self):
+        self.encoder.eval()
+        self.decoder.eval()
+
+        attention_plot = np.zeros((self.max_len, self.embed_dim))
+
+        hidden = self.decoder.init_hidden(1).to(self.device)
+
+        with torch.no_grad():
+            enc_feats = self.encoder(self.sample_features)
+
+            dec_input = torch.unsqueeze(torch.tensor(self.vocab(["<start>"])), 1).to(
+                self.device
+            )
+            result = []
+
+            for i in range(1, self.max_len):
+                preds, hidden, attn_weights = self.decoder(dec_input, enc_feats, hidden)
+
+                attention_plot[i] = (
+                    attn_weights.view(
+                        -1,
+                    )
+                    .cpu()
+                    .numpy()
+                )
+
+                cat = Categorical(logits=preds)
+                pred_id = cat.sample()
+                result.append(self.vocab.lookup_token(pred_id))
+
+                if self.vocab.lookup_token(pred_id) == "<eos>":
+                    return result, attention_plot
+
+                dec_input = torch.unsqueeze(pred_id, 1)
+
+            attention_plot = attention_plot[: len(result), :]
+
+        self.encoder.train()
+        self.decoder.train()
+        return result, attention_plot
 
     def train_step(self, img_feats, captions):
         self.encoder.zero_grad()
@@ -60,7 +137,7 @@ class Trainer:
 
         pbar = tqdm()
 
-        for epoch in range(1, epochs):
+        for epoch in range(1, epochs + 1):
             print("*" * 10 + f" Epoch {epoch}/{epochs} " + "*" * 10)
             total_loss = 0
 
@@ -72,13 +149,27 @@ class Trainer:
                 batch_loss, t_loss = self.train_step(img_feats, captions)
                 total_loss += t_loss
 
-                if i % 100 == 0:
+                if self.wandb:
                     average_batch_loss = batch_loss / captions.size(1)
-                    print(f"Average Batch {i} Loss: {average_batch_loss}")
+                    self.wandb.log({"average_batch_loss": average_batch_loss})
 
                 pbar.update()
 
-            losses.append(total_loss / len(dataloader))
+            epoch_loss = total_loss / len(dataloader)
+            if i % 100 == 0 and self.wandb:
+                result, attention_plot = self.eval_step()
+                pred_sent = " ".join(result)
+                fig_ = plot_attention(
+                    self.sample_image, result, attention_plot, wandb=True
+                )
+                self.wandb.log(
+                    {
+                        "epoch_loss": epoch_loss,
+                        "attention": wandb.Image(fig_, caption=pred_sent),
+                    }
+                )
 
-        print(f"Total Loss: {(total_loss / len(dataloader)):.6f}")
+            losses.append(epoch_loss)
+            print(f"Total Loss: {epoch_loss:.6f}")
+
         pbar.refresh()

@@ -9,13 +9,13 @@ from timm.data.transforms_factory import create_transform
 
 
 class Evaluer:
-    def __init__(self, encoder, decoder, vocab, max_len, attention_dim) -> None:
+    def __init__(self, encoder, decoder, vocab, max_len, embed_dim) -> None:
         self.encoder = encoder.eval()
         self.decoder = decoder.eval()
 
         self.vocab = vocab
         self.max_len = max_len
-        self.attention_dim = attention_dim
+        self.embed_dim = embed_dim
 
         inception = timm.create_model(
             "inception_v4", pretrained=True, num_classes=0, global_pool=""
@@ -26,7 +26,7 @@ class Evaluer:
         self.transform = create_transform(**config)
 
     def evaluate(self, image):
-        attention_plot = np.zeros((self.max_len, self.attention_dim))
+        attention_plot = np.zeros((self.max_len, self.embed_dim))
 
         hidden = self.decoder.init_hidden(1)
 

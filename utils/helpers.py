@@ -82,19 +82,23 @@ def collate_fn_pad(batch):
     return feat_tensor, padded_captions
 
 
-def plot_attention(image, result, attention_plot):
+def plot_attention(image, result, attention_plot, wandb=False):
     img_array = np.asarray(image)
+
     fig = plt.figure(figsize=(10, 10))
 
     len_result = len(result)
 
     for i in range(len_result):
         temp_attn = np.resize(attention_plot[i], (8, 8))
-        grid_size = max(np.ceil(len_result / 2), 2)
+        grid_size = int(max(np.ceil(len_result / 2), 2))
         ax = fig.add_subplot(grid_size, grid_size, i + 1)
         ax.set_title(result[i])
+        ax.set_axis_off()
         img = ax.imshow(img_array)
         ax.imshow(temp_attn, cmap="gray", alpha=0.6, extent=img.get_extent())
 
     plt.tight_layout()
+    if wandb:
+        return fig
     plt.show()
