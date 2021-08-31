@@ -156,7 +156,7 @@ class Trainer:
                 pbar.update()
 
             epoch_loss = total_loss / len(dataloader)
-            if i % 100 == 0 and self.wandb:
+            if self.wandb:
                 result, attention_plot = self.eval_step()
                 pred_sent = " ".join(result)
                 fig_ = plot_attention(
@@ -166,6 +166,7 @@ class Trainer:
                     {
                         "epoch_loss": epoch_loss,
                         "attention": wandb.Image(fig_, caption=pred_sent),
+                        "epoch": epoch,
                     }
                 )
 
