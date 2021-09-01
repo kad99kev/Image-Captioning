@@ -7,12 +7,14 @@ import torchtext
 from torchtext.data.utils import get_tokenizer
 from torchtext.vocab import build_vocab_from_iterator
 
+from typing import Tuple, Union
 
-def show_image(img: np.ndarray, cap=None) -> None:
+
+def show_image(img, cap=None):
     """
     Displays an image. (To be used in a notebook environment).
 
-    Parameters:
+    Arguments:
         img (np.ndarray): Image to be displayed.
         cap: Caption of the image.
     """
@@ -21,11 +23,11 @@ def show_image(img: np.ndarray, cap=None) -> None:
     plt.imshow(img)
 
 
-def convert_numpy(img: torch.Tensor) -> np.ndarray:
+def convert_numpy(img):
     """
     Converts a PyTorch image tensor into a `np.ndarray`.
 
-    Parameters:
+    Arguments:
         img (torch.Tensor): The image to be converted into numpy.
 
     Returns:
@@ -37,15 +39,14 @@ def convert_numpy(img: torch.Tensor) -> np.ndarray:
     return disp_img
 
 
-def get_tokenizer_vocab(df: pd.DataFrame) -> torchtext.vocab.Vocab:
+def get_tokenizer_vocab(df):
     """
     Returns a Vocabulary of the DataFrame.
 
-    Parameters:
+    Arguments:
         df (pd.DataFrame): The DataFrame containing the captions.
 
-    Returns: A Vocab object.
-
+    Returns: A Tokenizer and Vocab object.
     """
 
     tokenizer = get_tokenizer("spacy", language="en_core_web_sm")
@@ -83,6 +84,18 @@ def collate_fn_pad(batch):
 
 
 def plot_attention(image, result, attention_plot, wandb=False):
+    """
+    Plots the attention weights for a respective image along with its caption.
+
+    Arguments:
+        image (PIL.JpegImagePlugin.JpegImageFile): The original image.
+        result (list): Output from the image captioning model.
+        attention_plot (np.ndarray): Attention weights for the output.
+        wandb (bool): If plotting for Weights and Biases.
+
+    Returns:
+        Will return a plt Figure for Weights and Biases (if wandb is set to True).
+    """
     img_array = np.asarray(image)
 
     fig = plt.figure(figsize=(10, 10))

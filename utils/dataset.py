@@ -1,11 +1,8 @@
-import functools
 import pandas as pd
 import numpy as np
 from PIL import Image
 
 import torch
-import torchvision
-import torchtext
 
 
 class ImageDataset(torch.utils.data.Dataset):
@@ -18,9 +15,7 @@ class ImageDataset(torch.utils.data.Dataset):
         transforms (torchvision.transforms.Compose): Transform an image using PyTorch.
     """
 
-    def __init__(
-        self, path: str, img_list: list, transform: torchvision.transforms.Compose
-    ):
+    def __init__(self, path, img_list, transform):
         self.path = path
         self.img_list = img_list
         self.transform = transform
@@ -45,15 +40,11 @@ class FeatureCaptionDataset(torch.utils.data.Dataset):
     Parameters:
         path (str): Path of the features.
         df (pd.DataFrame): Transform an image using PyTorch.
+        tokenizer (functools.partial): PyTorch tokenizer for the dataset.
+        vocab (torchtext.vocab.Vocab): PyTorch Vocab object for the dataset.
     """
 
-    def __init__(
-        self,
-        path: str,
-        df: pd.DataFrame,
-        tokenizer: functools.partial,
-        vocab: torchtext.vocab.Vocab,
-    ):
+    def __init__(self, path, df, tokenizer, vocab):
         self.path = path
         self.df = df
         self.tokenizer = tokenizer

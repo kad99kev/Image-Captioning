@@ -20,6 +20,24 @@ def _custom_loss(real, pred, loss_fn):
 
 
 class Trainer:
+    """
+    Implements all the necessary training functions.
+
+    Arguments:
+        encoder (CNNEncoder): The CNN Encoder.
+        decoder (RNNDecoder): The RNN Decoder.
+        optimizer (torch.optim): Opitimizer.
+        loss_fn (nn.modules.loss): Loss function.
+        vocab (torchtext.vocab.Vocab): PyTorch Vocab object for the dataset.
+        max_len (int): Maximum length of sentence seen in the dataset.
+        features_shape (int): Feature size for attention.
+        device (torch.device): PyTorch device to be used.
+        proj_wandb (str): If provided Weights and Biases will be used to log.
+        config (dict): Configuration for run.
+        sample_image (PIL Image): Sample image that will be logged with Weights and Biases.
+        sample_features (np.ndarray): Features of the sample image.
+    """
+
     def __init__(
         self,
         encoder,
@@ -28,12 +46,13 @@ class Trainer:
         loss_fn,
         vocab,
         max_len,
-        embed_dim,
+        features_shape,
         device=torch.device("cpu"),
         proj_wandb=None,
+        config=None,
         sample_image=None,
         sample_features=None,
-    ) -> None:
+    ):
         self.encoder = encoder.to(device)
         self.decoder = decoder.to(device)
 
@@ -42,7 +61,7 @@ class Trainer:
 
         self.vocab = vocab
         self.max_len = max_len
-        self.embed_dim = embed_dim
+        self.features_shape = features_shape
 
         if proj_wandb:
             assert (
@@ -56,15 +75,21 @@ class Trainer:
             sample_features = torch.from_numpy(sample_features)
             self.sample_features = torch.unsqueeze(sample_features, 0).to(device)
 
-            self.wandb = wandb.init(project=proj_wandb)
+            self.wandb = wandb.init(project=proj_wandb, config=config)
 
         self.device = device
 
     def eval_step(self):
+        """
+        Performs evaluation step.
+
+        Returns:
+            Caption and Attention Weights.
+        """
         self.encoder.eval()
         self.decoder.eval()
 
-        attention_plot = np.zeros((self.max_len, self.embed_dim))
+        attention_plot = np.zeros((self.max_len, self.features_shape))
 
         hidden = self.decoder.init_hidden(1).to(self.device)
 
@@ -103,6 +128,16 @@ class Trainer:
         return result, attention_plot
 
     def train_step(self, img_feats, captions):
+        """
+        Performs training step.
+
+        Arguments:
+            img_feats (torch.Tensor): Image features from Image Model.
+            captions (torch.Tensor): Caption array.
+
+        Returns:
+            Batch wise loss and Total loss.
+        """
         self.encoder.zero_grad()
         self.decoder.zero_grad()
 
@@ -133,6 +168,13 @@ class Trainer:
         return loss, total_loss
 
     def train(self, dataloader, epochs):
+        """
+        Runs the training loop. Implements `train_step` and `eval_step`.
+
+        Arguments:
+            dataloader (torch.utils.data.dataloader.DataLoader): PyTorch DataLoader.
+            epochs (int): Number of epochs for training.
+        """
         losses = []
 
         pbar = tqdm()

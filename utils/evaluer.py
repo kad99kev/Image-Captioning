@@ -9,7 +9,18 @@ from timm.data.transforms_factory import create_transform
 
 
 class Evaluer:
-    def __init__(self, encoder, decoder, vocab, max_len, embed_dim) -> None:
+    """
+    Implements all the necessary evalution functions.
+
+    Arguments:
+        encoder (CNNEncoder): The CNN Encoder.
+        decoder (RNNDecoder): The RNN Decoder.
+        vocab (torchtext.vocab.Vocab): PyTorch Vocab object for the dataset.
+        max_len (int): Maximum length of sentence seen in the dataset.
+        embed_dim (int): Number of embedding features.
+    """
+
+    def __init__(self, encoder, decoder, vocab, max_len, embed_dim):
         self.encoder = encoder.eval()
         self.decoder = decoder.eval()
 
@@ -26,6 +37,15 @@ class Evaluer:
         self.transform = create_transform(**config)
 
     def evaluate(self, image):
+        """
+        Performs evaluation.
+
+        Arguments:
+            image (PIL Image): Input image.
+
+        Returns:
+            Caption and Attention Weights.
+        """
         attention_plot = np.zeros((self.max_len, self.embed_dim))
 
         hidden = self.decoder.init_hidden(1)

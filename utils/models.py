@@ -1,14 +1,21 @@
 import torch
 import torch.nn as nn
-from typing import Tuple
 
 
 class CNNEncoder(nn.Module):
-    def __init__(self, input_dim, embedding_dim) -> None:
+    """
+    The CNN Encoder. Passes images features through a fully connected layer.
+
+    Arguments:
+        input_dim (int): Number of features from the image encoder.
+        embedding_dim (int): Size of the embedding.
+    """
+
+    def __init__(self, input_dim, embedding_dim):
         super().__init__()
         self.linear = nn.Sequential(nn.Linear(input_dim, embedding_dim), nn.ReLU())
 
-    def forward(self, inputs) -> torch.Tensor:
+    def forward(self, inputs):
         inputs = inputs.permute(
             0, 2, 3, 1
         )  # (batch_size, img_size, img_size, img_encoder_size)
@@ -16,17 +23,30 @@ class CNNEncoder(nn.Module):
         batch_size = inputs.size(0)
         input_dim = inputs.size(-1)
 
-        inputs_ = inputs.view(
-            batch_size, -1, input_dim
-        )  # (batch_size, img_size * img_size, img_encoder_size)
+        # inputs_: (batch_size, img_size * img_size, img_encoder_size)
+        inputs_ = inputs.view(batch_size, -1, input_dim)
+
+        # After linear layer
+        # x: (batch_size, img_size * img_size, embedding_dim)
         x = self.linear(inputs_)
         return x
 
 
 class RNNDecoder(nn.Module):
+    """
+    The RNN Decoder. Tries to predict the next word.
+
+    Arguments:
+        encoder_dim (int):  Size of the encoder.
+        decoder_dim (int):  Size of the decoder.
+        attention_dim (int):  Size of the attention layer.
+        embedding_dim (int):  Size of the embedding.
+        vocab_size (int): Number of words in the vocabulary.
+    """
+
     def __init__(
         self, encoder_dim, decoder_dim, attention_dim, embedding_dim, vocab_size
-    ) -> None:
+    ):
         super().__init__()
         self.decoder_dim = decoder_dim
         self.embedding = nn.Embedding(vocab_size, embedding_dim)
@@ -36,11 +56,7 @@ class RNNDecoder(nn.Module):
 
         self.attn = Attention(encoder_dim, decoder_dim, attention_dim)
 
-        self.softmax = nn.Softmax(dim=1)
-
-    def forward(
-        self, decoder_input, encoder_output, hidden
-    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def forward(self, decoder_input, encoder_output, hidden):
 
         # Get outputs from attention model
         # context_vector: (1, encoder_dim)
@@ -73,6 +89,15 @@ class RNNDecoder(nn.Module):
 
 
 class Attention(nn.Module):
+    """
+    Implements Bahdanau Attention.
+
+    Arguments:
+        encoder_dim (int):  Size of the encoder.
+        decoder_dim (int):  Size of the decoder.
+        attention_dim (int):  Size of the attention layer.
+    """
+
     def __init__(self, encoder_dim, decoder_dim, attention_dim):
         super().__init__()
 
@@ -82,7 +107,9 @@ class Attention(nn.Module):
 
         self.softmax = nn.Softmax(dim=1)
 
-    def forward(self, encoder_out, decoder_hidden) -> Tuple[torch.Tensor, torch.Tensor]:
+    def forward(self, encoder_out, decoder_hidden):
+        # The 64 here is img_size * img_size i.e. 8 * 8
+
         # hidden_: (batch_size, 1, encoder_dim)
         hidden_ = decoder_hidden.unsqueeze(1)
 
