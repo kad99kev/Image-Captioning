@@ -17,16 +17,16 @@ class Evaluer:
         decoder (RNNDecoder): The RNN Decoder.
         vocab (torchtext.vocab.Vocab): PyTorch Vocab object for the dataset.
         max_len (int): Maximum length of sentence seen in the dataset.
-        embed_dim (int): Number of embedding features.
+        features_shape (int): Feature size for attention..
     """
 
-    def __init__(self, encoder, decoder, vocab, max_len, embed_dim):
+    def __init__(self, encoder, decoder, vocab, max_len, features_shape):
         self.encoder = encoder.eval()
         self.decoder = decoder.eval()
 
         self.vocab = vocab
         self.max_len = max_len
-        self.embed_dim = embed_dim
+        self.features_shape = features_shape
 
         inception = timm.create_model(
             "inception_v4", pretrained=True, num_classes=0, global_pool=""
@@ -46,7 +46,7 @@ class Evaluer:
         Returns:
             Caption and Attention Weights.
         """
-        attention_plot = np.zeros((self.max_len, self.embed_dim))
+        attention_plot = np.zeros((self.max_len, self.features_shape))
 
         hidden = self.decoder.init_hidden(1)
 
